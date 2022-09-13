@@ -120,7 +120,7 @@ func (h *HTTPHandler) getURLByKey(key string) (string, bool) {
 	return url, found
 }
 
-func main() {
+func NewServer() *http.Server {
 	r := mux.NewRouter()
 
 	handler := NewHTTPHandler()
@@ -134,6 +134,11 @@ func main() {
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
+	return srv
+}
+
+func main() {
+	srv := NewServer()
 	log.Printf("Start serving on %s", srv.Addr)
 	log.Fatal(srv.ListenAndServe())
 }
