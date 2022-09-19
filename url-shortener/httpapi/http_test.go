@@ -1,4 +1,4 @@
-package main
+package httpapi
 
 import (
 	"bytes"
@@ -12,13 +12,13 @@ import (
 	openapi3_legacy "github.com/getkin/kin-openapi/routers/legacy"
 	"github.com/stretchr/testify/suite"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
+	"url-shortener/urlshortener"
 )
 
 //go:embed api.yaml
@@ -38,7 +38,7 @@ type APISuite struct {
 }
 
 func (s *APISuite) SetupSuite() {
-	srv := NewServer()
+	srv := NewServer(urlshortener.NewManager())
 	go func() {
 		log.Printf("Start serving on %s", srv.Addr)
 		log.Fatal(srv.ListenAndServe())
@@ -78,7 +78,7 @@ func (s *APISuite) TestCreateAndGet() {
 
 		// then:
 		s.Require().NoError(err)
-		rawBody, err := ioutil.ReadAll(resp.Body)
+		rawBody, err := io.ReadAll(resp.Body)
 		s.Require().NoError(err)
 		var body map[string]string
 		s.Require().NoError(json.Unmarshal(rawBody, &body))
@@ -113,7 +113,7 @@ func (s *APISuite) TestCreateAndGet() {
 		// then:
 		s.Require().NoError(err)
 		s.Require().Equal(http.StatusOK, resp.StatusCode)
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		s.Require().NoError(err)
 		s.Require().Equal(targetContent, body)
 	})
@@ -182,7 +182,7 @@ func (s *APISuite) readAll(in io.Reader) []byte {
 	if in == nil {
 		return nil
 	}
-	data, err := ioutil.ReadAll(in)
+	data, err := io.ReadAll(in)
 	s.Require().NoError(err)
 	return data
 }
