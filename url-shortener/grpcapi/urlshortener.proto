@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package url_shortener;
+
+option go_package = "pb/v1";
+
+service UrlShortener {
+  rpc CreateShortcut(CreateShortcutRequest) returns (CreateShortcutResponse) {}
+}
+
+message CreateShortcutRequest {
+  string full_url = 1;
+}
+
+message CreateShortcutResponse {
+  string key = 1;
+}
