@@ -1,6 +1,10 @@
 package urlshortener
 
+import "context"
+
 type Manager interface {
-	CreateShortcut(fullURL string) (string, error)
-	ResolveShortcut(key string) (string, bool)
+	CreateShortcut(ctx context.Context, fullURL string) (string, error)
+
+	// ResolveShortcut returns ErrNotFound if there is no shortcut with the specified key.
+	ResolveShortcut(ctx context.Context, key string) (string, error)
 }

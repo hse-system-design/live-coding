@@ -35,12 +35,12 @@ type grpcHandler struct {
 	manager urlshortener.Manager
 }
 
-func (h *grpcHandler) CreateShortcut(_ context.Context, req *v1.CreateShortcutRequest) (*v1.CreateShortcutResponse, error) {
+func (h *grpcHandler) CreateShortcut(ctx context.Context, req *v1.CreateShortcutRequest) (*v1.CreateShortcutResponse, error) {
 	fullURL := req.GetFullUrl()
 	if fullURL == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "full URL must not be empty")
 	}
-	key, err := h.manager.CreateShortcut(fullURL)
+	key, err := h.manager.CreateShortcut(ctx, fullURL)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create shortcut due to an error: %v", err)
 	}

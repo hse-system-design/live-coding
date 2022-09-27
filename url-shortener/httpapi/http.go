@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
@@ -44,7 +45,7 @@ func (h *HTTPHandler) CreateShortcut(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	key, err := h.manager.CreateShortcut(data.Url)
+	key, err := h.manager.CreateShortcut(r.Context(), data.Url)
 	var status int
 	var response interface{}
 	if err != nil {
@@ -68,8 +69,8 @@ func (h *HTTPHandler) CreateShortcut(rw http.ResponseWriter, r *http.Request) {
 func (h *HTTPHandler) ResolveURL(rw http.ResponseWriter, r *http.Request) {
 	key := strings.Trim(r.URL.Path, "/")
 
-	url, found := h.manager.ResolveShortcut(key)
-	if !found {
+	url, err := h.manager.ResolveShortcut(r.Context(), key)
+	if errors.Is(err, urlshortener.ErrNotFound) {
 		http.NotFound(rw, r)
 	}
 	rw.Header().Set("Location", url)

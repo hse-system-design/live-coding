@@ -1,6 +1,7 @@
 package inmemoryimpl
 
 import (
+	"context"
 	"log"
 	"sync"
 	"url-shortener/urlshortener"
@@ -17,7 +18,7 @@ type Manager struct {
 	urlShortcuts map[string]string // short url key -> full url
 }
 
-func (m *Manager) CreateShortcut(fullURL string) (string, error) {
+func (m *Manager) CreateShortcut(_ context.Context, fullURL string) (string, error) {
 	const maxAttempts = 5
 
 	for attempt := 0; attempt < maxAttempts; attempt++ {
@@ -44,10 +45,13 @@ func (m *Manager) insertIfKeyIsNotUsed(key string, fullURL string) bool {
 	return true
 }
 
-func (m *Manager) ResolveShortcut(key string) (string, bool) {
+func (m *Manager) ResolveShortcut(_ context.Context, key string) (string, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	url, found := m.urlShortcuts[key]
-	return url, found
+	if !found {
+		return "", urlshortener.ErrNotFound
+	}
+	return url, nil
 }

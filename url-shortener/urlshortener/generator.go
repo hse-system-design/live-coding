@@ -1,12 +1,9 @@
 package urlshortener
 
 import (
-	"errors"
 	"math/rand"
 	"strings"
 )
-
-var ErrKeyGenerationFailed = errors.New("key_generation_failed")
 
 func GenerateKey() string {
 	const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
