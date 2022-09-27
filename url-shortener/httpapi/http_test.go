@@ -18,7 +18,9 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"url-shortener/urlshortener"
 	"url-shortener/urlshortener/inmemoryimpl"
+	"url-shortener/urlshortener/mongoimpl"
 )
 
 //go:embed api.yaml
@@ -27,21 +29,34 @@ var apiSpec []byte
 var ctx = context.Background()
 
 func TestAPI(t *testing.T) {
-	suite.Run(t, &APISuite{})
+	t.Run("InMemory", func(t *testing.T) {
+		suite.Run(t, &APISuite{
+			manager: inmemoryimpl.NewManager(),
+		})
+	})
+	t.Run("Mongo", func(t *testing.T) {
+		suite.Run(t, &APISuite{
+			manager: mongoimpl.NewManager("mongodb://localhost:27017"),
+		})
+	})
 }
 
 type APISuite struct {
 	suite.Suite
+
+	manager urlshortener.Manager
+
+	server *http.Server
 
 	client        http.Client
 	apiSpecRouter openapi3_routers.Router
 }
 
 func (s *APISuite) SetupSuite() {
-	srv := NewServer(inmemoryimpl.NewManager())
+	s.server = NewServer(s.manager)
 	go func() {
-		log.Printf("Start serving on %s", srv.Addr)
-		log.Fatal(srv.ListenAndServe())
+		log.Printf("Start serving on %s", s.server.Addr)
+		log.Println(s.server.ListenAndServe())
 	}()
 
 	spec, err := openapi3.NewLoader().LoadFromData(apiSpec)
@@ -51,6 +66,10 @@ func (s *APISuite) SetupSuite() {
 	s.Require().NoError(err)
 	s.apiSpecRouter = router
 	s.client.Transport = s.specValidating(http.DefaultTransport)
+}
+
+func (s *APISuite) TearDownSuite() {
+	s.Require().NoError(s.server.Shutdown(ctx))
 }
 
 func (s *APISuite) TestNotFound() {
