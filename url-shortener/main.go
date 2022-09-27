@@ -5,11 +5,11 @@ import (
 	"sync"
 	"url-shortener/grpcapi"
 	"url-shortener/httpapi"
-	"url-shortener/urlshortener"
+	"url-shortener/urlshortener/inmemoryimpl"
 )
 
 func main() {
-	manager := urlshortener.NewManager()
+	manager := inmemoryimpl.NewManager()
 
 	var wg sync.WaitGroup
 	wg.Add(2)

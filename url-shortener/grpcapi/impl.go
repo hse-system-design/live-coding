@@ -12,7 +12,7 @@ import (
 	"url-shortener/urlshortener"
 )
 
-func RunGRPCServer(manager *urlshortener.Manager) {
+func RunGRPCServer(manager urlshortener.Manager) {
 	handler := &grpcHandler{manager: manager}
 
 	server := grpc.NewServer()
@@ -32,7 +32,7 @@ func RunGRPCServer(manager *urlshortener.Manager) {
 type grpcHandler struct {
 	v1.UnimplementedUrlShortenerServer
 
-	manager *urlshortener.Manager
+	manager urlshortener.Manager
 }
 
 func (h *grpcHandler) CreateShortcut(_ context.Context, req *v1.CreateShortcutRequest) (*v1.CreateShortcutResponse, error) {

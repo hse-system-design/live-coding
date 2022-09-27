@@ -18,7 +18,7 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"url-shortener/urlshortener"
+	"url-shortener/urlshortener/inmemoryimpl"
 )
 
 //go:embed api.yaml
@@ -38,7 +38,7 @@ type APISuite struct {
 }
 
 func (s *APISuite) SetupSuite() {
-	srv := NewServer(urlshortener.NewManager())
+	srv := NewServer(inmemoryimpl.NewManager())
 	go func() {
 		log.Printf("Start serving on %s", srv.Addr)
 		log.Fatal(srv.ListenAndServe())

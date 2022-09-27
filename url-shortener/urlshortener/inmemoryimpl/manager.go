@@ -1,14 +1,10 @@
-package urlshortener
+package inmemoryimpl
 
 import (
-	"errors"
 	"log"
-	"math/rand"
-	"strings"
 	"sync"
+	"url-shortener/urlshortener"
 )
-
-var ErrKeyGenerationFailed = errors.New("key_generation_failed")
 
 func NewManager() *Manager {
 	return &Manager{
@@ -22,17 +18,10 @@ type Manager struct {
 }
 
 func (m *Manager) CreateShortcut(fullURL string) (string, error) {
-	const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
-	const keyLength = 5
 	const maxAttempts = 5
 
 	for attempt := 0; attempt < maxAttempts; attempt++ {
-		var keyBuilder strings.Builder
-		for i := 0; i < keyLength; i++ {
-			char := alphabet[rand.Intn(len(alphabet))]
-			_ = keyBuilder.WriteByte(char) // string builder never fails writes
-		}
-		key := keyBuilder.String()
+		key := urlshortener.GenerateKey()
 
 		succeeded := m.insertIfKeyIsNotUsed(key, fullURL)
 		if !succeeded {
@@ -41,7 +30,7 @@ func (m *Manager) CreateShortcut(fullURL string) (string, error) {
 		}
 		return key, nil
 	}
-	return "", ErrKeyGenerationFailed
+	return "", urlshortener.ErrKeyGenerationFailed
 }
 
 func (m *Manager) insertIfKeyIsNotUsed(key string, fullURL string) bool {

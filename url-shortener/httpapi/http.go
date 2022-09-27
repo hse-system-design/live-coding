@@ -11,7 +11,7 @@ import (
 )
 
 func NewHTTPHandler(
-	manager *urlshortener.Manager,
+	manager urlshortener.Manager,
 ) *HTTPHandler {
 
 	return &HTTPHandler{
@@ -20,7 +20,7 @@ func NewHTTPHandler(
 }
 
 type HTTPHandler struct {
-	manager *urlshortener.Manager
+	manager urlshortener.Manager
 }
 
 type CreateShortcutRequest struct {
@@ -76,7 +76,7 @@ func (h *HTTPHandler) ResolveURL(rw http.ResponseWriter, r *http.Request) {
 	rw.WriteHeader(http.StatusPermanentRedirect)
 }
 
-func NewServer(manager *urlshortener.Manager) *http.Server {
+func NewServer(manager urlshortener.Manager) *http.Server {
 	r := mux.NewRouter()
 
 	handler := NewHTTPHandler(manager)
