@@ -7,6 +7,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/x/bsonx"
+	"time"
 	"url-shortener/urlshortener"
 )
 
@@ -21,9 +23,24 @@ func NewManager(mongoURL string) *manager {
 	}
 
 	collection := client.Database(dbName).Collection(collName)
+	ensureIndexes(ctx, collection)
 
 	return &manager{
 		urls: collection,
+	}
+}
+
+func ensureIndexes(ctx context.Context, collection *mongo.Collection) {
+	indexModels := []mongo.IndexModel{
+		{
+			Keys: bsonx.Doc{{Key: "_id", Value: bsonx.Int32(1)}},
+		},
+	}
+	opts := options.CreateIndexes().SetMaxTime(10 * time.Second)
+
+	_, err := collection.Indexes().CreateMany(ctx, indexModels, opts)
+	if err != nil {
+		panic(fmt.Errorf("failed to ensure indexes %w", err))
 	}
 }
 
