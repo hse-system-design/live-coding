@@ -126,6 +126,8 @@ func NewServer() *http.Server {
 	handler := NewHTTPHandler()
 
 	r.Use(loggingMiddleware)
+	r.Use(corsMiddleware)
+	r.PathPrefix("/").Methods(http.MethodOptions).HandlerFunc(corsPreflightHandler)
 	r.HandleFunc("/{shortUrl:\\w{5}}", handler.ResolveURL).Methods(http.MethodGet)
 	r.HandleFunc("/api/urls", handler.CreateShortcut).Methods(http.MethodPost)
 
@@ -165,5 +167,28 @@ func loggingMiddleware(h http.Handler) http.Handler {
 		elapsed := time.Now().Sub(start)
 
 		log.Printf("%s %s: %d %s", r.Method, r.URL, wrapper.Status, elapsed)
+	})
+}
+
+func corsPreflightHandler(rw http.ResponseWriter, _ *http.Request) {
+	rw.Header().Set("Access-Control-Allow-Origin", "*")
+	rw.Header().Set("Access-Control-Allow-Methods", "*")
+	rw.Header().Set("Access-Control-Allow-Headers", "*")
+	rw.Header().Set("Access-Control-Expose-Headers", "*")
+	rw.WriteHeader(http.StatusNoContent)
+}
+
+func corsMiddleware(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			h.ServeHTTP(rw, r)
+			return
+		}
+
+		rw.Header().Set("Access-Control-Allow-Origin", "*")
+		rw.Header().Set("Access-Control-Allow-Methods", "*")
+		rw.Header().Set("Access-Control-Allow-Headers", "*")
+		rw.Header().Set("Access-Control-Expose-Headers", "*")
+		h.ServeHTTP(rw, r)
 	})
 }
