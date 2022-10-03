@@ -125,6 +125,7 @@ func NewServer() *http.Server {
 
 	handler := NewHTTPHandler()
 
+	r.Use(loggingMiddleware)
 	r.HandleFunc("/{shortUrl:\\w{5}}", handler.ResolveURL).Methods(http.MethodGet)
 	r.HandleFunc("/api/urls", handler.CreateShortcut).Methods(http.MethodPost)
 
@@ -141,4 +142,28 @@ func main() {
 	srv := NewServer()
 	log.Printf("Start serving on %s", srv.Addr)
 	log.Fatal(srv.ListenAndServe())
+}
+
+type responseWriter struct {
+	http.ResponseWriter
+	Status int
+}
+
+func (rw *responseWriter) WriteHeader(status int) {
+	if rw.Status == 0 {
+		rw.Status = status
+	}
+	rw.ResponseWriter.WriteHeader(status)
+}
+
+func loggingMiddleware(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		wrapper := &responseWriter{ResponseWriter: rw}
+
+		start := time.Now()
+		h.ServeHTTP(wrapper, r)
+		elapsed := time.Now().Sub(start)
+
+		log.Printf("%s %s: %d %s", r.Method, r.URL, wrapper.Status, elapsed)
+	})
 }
