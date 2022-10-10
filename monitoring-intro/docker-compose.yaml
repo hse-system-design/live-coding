@@ -12,3 +12,12 @@ services:
     build: app/
     ports:
       - 8080:2112
+
+  grafana:
+    image: grafana/grafana:8.2.6
+    ports:
+      - 3000:3000
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/config.ini:/etc/grafana/config.ini
+      - ./data/grafana:/var/lib/grafana
