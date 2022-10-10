@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-miner-deployment
+  labels:
+    service-name: echo
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      service-name: demo-miner
+  template:
+    metadata:
+      labels:
+        service-name: demo-miner
+    spec:
+      containers:
+        - name: miner-app
+          image: lfyuomrgylo/demo-miner
+          ports:
+            - containerPort: 2112
+          resources:
+            requests:
+              cpu: 256m
+              memory: 256M
+            limits:
+              cpu: 256m
+              memory: 256M
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-miner-nodeport
+spec:
+  selector:
+    service-name: demo-miner
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 2112
+      nodePort: 30300
