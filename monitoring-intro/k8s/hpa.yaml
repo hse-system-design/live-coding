@@ -1,0 +1,12 @@
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: demo-miner-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: demo-miner-deployment
+  minReplicas: 3
+  maxReplicas: 12
+  targetCPUUtilizationPercentage: 60

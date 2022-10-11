@@ -38,6 +38,24 @@ func BenchmarkGeneratePair_4096_8(b *testing.B) {
 	}
 }
 
+func BenchmarkGeneratePair_4096_10(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		mineKey(4096, 10)
+	}
+}
+
+func BenchmarkGeneratePair_4096_12(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		mineKey(4096, 12)
+	}
+}
+
+func BenchmarkGeneratePair_4096_13(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		mineKey(4096, 13)
+	}
+}
+
 func BenchmarkGeneratePair_4096_16(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		mineKey(4096, 16)
