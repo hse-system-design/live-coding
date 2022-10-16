@@ -8,20 +8,27 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"url-shortener/ratelimit"
 	"url-shortener/urlshortener"
 )
 
 func NewHTTPHandler(
 	manager urlshortener.Manager,
+	limiterFactory *ratelimit.Factory,
 ) *HTTPHandler {
 
 	return &HTTPHandler{
-		manager: manager,
+		manager:      manager,
+		createLimit:  limiterFactory.NewLimiter("post_url", 10*time.Second, 2),
+		resolveLimit: limiterFactory.NewLimiter("get_url", 1*time.Minute, 10),
 	}
 }
 
 type HTTPHandler struct {
 	manager urlshortener.Manager
+
+	createLimit  *ratelimit.Limiter
+	resolveLimit *ratelimit.Limiter
 }
 
 type CreateShortcutRequest struct {
@@ -37,6 +44,10 @@ type ErrorResponse struct {
 }
 
 func (h *HTTPHandler) CreateShortcut(rw http.ResponseWriter, r *http.Request) {
+	if isRateLimited(h.createLimit, rw, r) {
+		return
+	}
+
 	var data CreateShortcutRequest
 
 	err := json.NewDecoder(r.Body).Decode(&data)
@@ -67,6 +78,10 @@ func (h *HTTPHandler) CreateShortcut(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HTTPHandler) ResolveURL(rw http.ResponseWriter, r *http.Request) {
+	if isRateLimited(h.resolveLimit, rw, r) {
+		return
+	}
+
 	key := strings.Trim(r.URL.Path, "/")
 
 	url, err := h.manager.ResolveShortcut(r.Context(), key)
@@ -77,10 +92,13 @@ func (h *HTTPHandler) ResolveURL(rw http.ResponseWriter, r *http.Request) {
 	rw.WriteHeader(http.StatusPermanentRedirect)
 }
 
-func NewServer(manager urlshortener.Manager) *http.Server {
+func NewServer(
+	manager urlshortener.Manager,
+	rateLimitFactory *ratelimit.Factory,
+) *http.Server {
 	r := mux.NewRouter()
 
-	handler := NewHTTPHandler(manager)
+	handler := NewHTTPHandler(manager, rateLimitFactory)
 
 	r.Use(loggingMiddleware)
 	r.Use(corsMiddleware)
@@ -107,6 +125,19 @@ func (rw *responseWriter) WriteHeader(status int) {
 		rw.Status = status
 	}
 	rw.ResponseWriter.WriteHeader(status)
+}
+
+func isRateLimited(limiter *ratelimit.Limiter, rw http.ResponseWriter, r *http.Request) bool {
+	canDo, err := limiter.CanDoAt(r.Context(), time.Now())
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return true
+	}
+	if !canDo {
+		http.Error(rw, "rate limit exceeded", http.StatusTooManyRequests)
+		return true
+	}
+	return false
 }
 
 func loggingMiddleware(h http.Handler) http.Handler {

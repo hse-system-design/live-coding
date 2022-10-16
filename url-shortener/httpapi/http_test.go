@@ -63,7 +63,7 @@ type APISuite struct {
 }
 
 func (s *APISuite) SetupSuite() {
-	s.server = NewServer(s.manager)
+	s.server = NewServer(s.manager, nil)
 	go func() {
 		log.Printf("Start serving on %s", s.server.Addr)
 		log.Println(s.server.ListenAndServe())
