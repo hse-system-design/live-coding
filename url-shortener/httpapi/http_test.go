@@ -10,6 +10,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3filter"
 	openapi3_routers "github.com/getkin/kin-openapi/routers"
 	openapi3_legacy "github.com/getkin/kin-openapi/routers/legacy"
+	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/suite"
 	"io"
 	"log"
@@ -21,6 +22,7 @@ import (
 	"url-shortener/urlshortener"
 	"url-shortener/urlshortener/inmemoryimpl"
 	"url-shortener/urlshortener/mongoimpl"
+	rediscached "url-shortener/urlshortener/rediscachedimpl"
 )
 
 //go:embed api.yaml
@@ -37,6 +39,14 @@ func TestAPI(t *testing.T) {
 	t.Run("Mongo", func(t *testing.T) {
 		suite.Run(t, &APISuite{
 			manager: mongoimpl.NewManager("mongodb://localhost:27017"),
+		})
+	})
+	t.Run("RedisCached", func(t *testing.T) {
+		suite.Run(t, &APISuite{
+			manager: rediscached.NewManager(
+				redis.NewClient(&redis.Options{Addr: "127.0.0.1:6379"}),
+				mongoimpl.NewManager("mongodb://localhost:27017"),
+			),
 		})
 	})
 }

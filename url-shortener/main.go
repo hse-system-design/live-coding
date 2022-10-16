@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/go-redis/redis/v8"
 	"log"
 	"sync"
 	"url-shortener/grpcapi"
@@ -10,15 +11,18 @@ import (
 	"url-shortener/urlshortener"
 	"url-shortener/urlshortener/inmemoryimpl"
 	"url-shortener/urlshortener/mongoimpl"
+	rediscached "url-shortener/urlshortener/rediscachedimpl"
 )
 
 const (
 	modeInMemory = "in-memory"
 	modeMongo    = "mongo"
+	modeCached   = "cached"
 )
 
 var flagMode = flag.String("mode", modeInMemory, fmt.Sprintf("Storage mode. Possible values: %q, %q", modeInMemory, modeMongo))
 var flagMongoAddr = flag.String("mongo-addr", "mongodb://localhost:27017", "Address of MongoDB to connect to")
+var flagRedisAddr = flag.String("redis-addr", "127.0.0.1:6379", "Address of Redis to connect to")
 
 func main() {
 	flag.Parse()
@@ -28,6 +32,11 @@ func main() {
 		manager = inmemoryimpl.NewManager()
 	case modeMongo:
 		manager = mongoimpl.NewManager(*flagMongoAddr)
+	case modeCached:
+		manager = rediscached.NewManager(
+			redis.NewClient(&redis.Options{Addr: *flagRedisAddr}),
+			mongoimpl.NewManager(*flagMongoAddr),
+		)
 	default:
 		log.Fatalf("Unexpected mode flag: %q", *flagMode)
 	}
