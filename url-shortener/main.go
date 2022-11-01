@@ -22,7 +22,7 @@ const (
 )
 
 var flagMode = flag.String("mode", modeInMemory, fmt.Sprintf("Storage mode. Possible values: %q, %q", modeInMemory, modeMongo))
-var flagMongoAddr = flag.String("mongo-addr", "mongodb://localhost:27017", "Address of MongoDB to connect to")
+var flagMongoAddr = flag.String("mongo-addr", "mongodb://admin:admin@localhost:27017", "Address of MongoDB to connect to")
 var flagRedisAddr = flag.String("redis-addr", "127.0.0.1:6379", "Address of Redis to connect to")
 
 func main() {
@@ -32,16 +32,18 @@ func main() {
 	limiterFactory := ratelimit.NewFactory(redisClient)
 
 	var manager urlshortener.Manager
+	var indexMaintainers []urlshortener.IndexMaintainer
 	switch *flagMode {
 	case modeInMemory:
 		manager = inmemoryimpl.NewManager()
 	case modeMongo:
-		manager = mongoimpl.NewManager(*flagMongoAddr)
+		mongoManager := mongoimpl.NewManager(*flagMongoAddr)
+		manager = mongoManager
+		indexMaintainers = append(indexMaintainers, mongoManager)
 	case modeCached:
-		manager = rediscached.NewManager(
-			redisClient,
-			mongoimpl.NewManager(*flagMongoAddr),
-		)
+		mongoManager := mongoimpl.NewManager(*flagMongoAddr)
+		manager = rediscached.NewManager(redisClient, mongoManager)
+		indexMaintainers = append(indexMaintainers, mongoManager)
 	default:
 		log.Fatalf("Unexpected mode flag: %q", *flagMode)
 	}
@@ -51,7 +53,7 @@ func main() {
 
 	go func() {
 		defer wg.Done()
-		srv := httpapi.NewServer(manager, limiterFactory)
+		srv := httpapi.NewServer(manager, limiterFactory, indexMaintainers)
 		log.Printf("Start serving HTTP at %s", srv.Addr)
 		log.Fatal(srv.ListenAndServe())
 	}()

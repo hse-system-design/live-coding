@@ -23,14 +23,21 @@ func NewManager(mongoURL string) *manager {
 	}
 
 	collection := client.Database(dbName).Collection(collName)
-	ensureIndexes(ctx, collection)
 
 	return &manager{
-		urls: collection,
+		client: client,
+		urls:   collection,
 	}
 }
 
-func ensureIndexes(ctx context.Context, collection *mongo.Collection) {
+type manager struct {
+	client *mongo.Client
+	urls   *mongo.Collection
+}
+
+var _ urlshortener.Manager = (*manager)(nil)
+
+func (s *manager) EnsureIndices(ctx context.Context) error {
 	indexModels := []mongo.IndexModel{
 		{
 			Keys: bsonx.Doc{{Key: "_id", Value: bsonx.Int32(1)}},
@@ -38,17 +45,23 @@ func ensureIndexes(ctx context.Context, collection *mongo.Collection) {
 	}
 	opts := options.CreateIndexes().SetMaxTime(10 * time.Second)
 
-	_, err := collection.Indexes().CreateMany(ctx, indexModels, opts)
+	_, err := s.urls.Indexes().CreateMany(ctx, indexModels, opts)
 	if err != nil {
 		panic(fmt.Errorf("failed to ensure indexes %w", err))
 	}
-}
 
-type manager struct {
-	urls *mongo.Collection
-}
+	// ensure collection is sharded over primary index
+	if err := s.client.Database("admin").RunCommand(ctx, bson.D{
+		{"shardCollection", fmt.Sprintf("%s.%s", dbName, collName)},
+		{"key", bson.D{{"_id", 1}}}, // order-based sharding
+		{"unique", true},
+		//"options": bson.M{"locale": "simple"},
+	}).Err(); err != nil {
+		return err
+	}
 
-var _ urlshortener.Manager = (*manager)(nil)
+	return nil
+}
 
 func (s *manager) CreateShortcut(ctx context.Context, url string) (string, error) {
 	const attemptsCount = 5

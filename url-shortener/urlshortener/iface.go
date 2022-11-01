@@ -8,3 +8,7 @@ type Manager interface {
 	// ResolveShortcut returns ErrNotFound if there is no shortcut with the specified key.
 	ResolveShortcut(ctx context.Context, key string) (string, error)
 }
+
+type IndexMaintainer interface {
+	EnsureIndices(context.Context) error
+}

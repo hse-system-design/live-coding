@@ -15,17 +15,20 @@ import (
 func NewHTTPHandler(
 	manager urlshortener.Manager,
 	limiterFactory *ratelimit.Factory,
+	indexMaintainers []urlshortener.IndexMaintainer,
 ) *HTTPHandler {
 
 	return &HTTPHandler{
-		manager:      manager,
-		createLimit:  limiterFactory.NewLimiter("post_url", 10*time.Second, 2),
-		resolveLimit: limiterFactory.NewLimiter("get_url", 1*time.Minute, 10),
+		manager:          manager,
+		indexMaintainers: indexMaintainers,
+		createLimit:      limiterFactory.NewLimiter("post_url", 10*time.Second, 2),
+		resolveLimit:     limiterFactory.NewLimiter("get_url", 1*time.Minute, 10),
 	}
 }
 
 type HTTPHandler struct {
-	manager urlshortener.Manager
+	manager          urlshortener.Manager
+	indexMaintainers []urlshortener.IndexMaintainer
 
 	createLimit  *ratelimit.Limiter
 	resolveLimit *ratelimit.Limiter
@@ -92,19 +95,31 @@ func (h *HTTPHandler) ResolveURL(rw http.ResponseWriter, r *http.Request) {
 	rw.WriteHeader(http.StatusPermanentRedirect)
 }
 
+func (h *HTTPHandler) CreateIndices(rw http.ResponseWriter, r *http.Request) {
+	for _, maintainer := range h.indexMaintainers {
+		if err := maintainer.EnsureIndices(r.Context()); err != nil {
+			http.Error(rw, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+	_, _ = rw.Write([]byte("All indices are successfully created"))
+}
+
 func NewServer(
 	manager urlshortener.Manager,
 	rateLimitFactory *ratelimit.Factory,
+	indexMaintainers []urlshortener.IndexMaintainer,
 ) *http.Server {
 	r := mux.NewRouter()
 
-	handler := NewHTTPHandler(manager, rateLimitFactory)
+	handler := NewHTTPHandler(manager, rateLimitFactory, indexMaintainers)
 
 	r.Use(loggingMiddleware)
 	r.Use(corsMiddleware)
 	r.PathPrefix("/").Methods(http.MethodOptions).HandlerFunc(corsPreflightHandler)
 	r.HandleFunc("/{shortUrl:\\w{5}}", handler.ResolveURL).Methods(http.MethodGet)
 	r.HandleFunc("/api/urls", handler.CreateShortcut).Methods(http.MethodPost)
+	r.HandleFunc("/maintenance/createIndices", handler.CreateIndices).Methods(http.MethodPost)
 
 	srv := &http.Server{
 		Handler:      r,
